@@ -19,7 +19,37 @@ FF++(FaceForensics++) 기반으로 학습된 ResNet18/ResNet50 모델을 제공�
 
 ## 🚀 시작하기
 
-### 1. 환경 설정
+### 1. 데이터셋 준비
+
+이 레포는 **FaceForensics++ (FF++) C23** 데이터셋을 사용합니다.  
+데이터는 라이선스 문제로 Git에 포함되어 있지 않으며, 각자 로컬에서 직접 받아야 합니다.
+
+1. **Kaggle에서 FF++ C23 다운로드**
+   - Kaggle 데이터셋: https://www.kaggle.com/datasets/xdxd003/ff-c23  
+   - Kaggle 계정으로 로그인한 뒤, "Download" 버튼을 눌러 전체 데이터를 받습니다.  
+2. 압축을 해제한 뒤, 이 레포 기준으로 아래와 같은 경로가 되도록 맞춰줍니다:
+
+```
+TruthLens-Model/
+├── data/
+│   ├── raw/
+|       ├── ffpp_c23/
+|           ├── FaceForensics++_C23/
+|               ├── original/
+|               ├── Deepfakes/
+|               ├── Face2Face/
+|               ├── FaceSwap/
+|               ├── NeuralTextures/
+|                ...
+```
+3. `data/` 폴더는 `.gitignore`에 의해 Git에 올라가지 않으므로,  
+**모든 팀원은 위 경로 구조를 로컬에서 동일하게 맞춰야 합니다.**
+
+> 이후 단계(프레임 추출, 얼굴 추출, 인덱스 생성 등)는  
+> `src/*.py` 스크립트가 필요한 디렉토리를 자동으로 생성합니다.  
+> 직접 만들 필요 없이 1번 단계(데이터 위치)만 맞으면 됩니다.
+
+### 2. 환경 설정
 
 ```
 # (선택) 가상환경 생성
@@ -35,7 +65,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. 모델 파일 다운로드
+### 3. 모델 파일 다운로드
 훈련된 모델 가중치는 weights/ 디렉토리에 저장됩니다.
 (.pth 파일은 Git LFS로 관리)
 
@@ -87,6 +117,7 @@ python -m src.evaluate_ffpp_resnet50
 
 ```
 TruthLens-Model/
+├── data/                            # 데이터셋
 ├── src/
 │   ├── extract_frames_ffpp.py       # 영상 → 프레임 추출
 │   ├── extract_faces_ffpp.py        # 프레임 → 얼굴 crop
