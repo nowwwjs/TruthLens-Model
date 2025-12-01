@@ -205,3 +205,52 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+########################################
+# Deepfake Project (TruthLens) Ignore
+########################################
+
+# Dataset directories
+data/
+dataset/
+datasets/
+ffpp/
+dfdc/
+celeba/
+raw/
+processed/
+interim/
+
+# Video files
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
+
+# Image files (dataset)
+*.jpg
+*.jpeg
+*.png
+*.bmp
+
+# Extracted frames / face crops
+frames/
+faces/
+
+# Model weights (except those tracked with Git LFS)
+*.pt
+*.ckpt
+
+# Logs / results
+results/
+logs/
+runs/
+tensorboard/
+lightning_logs/
+
+# Temporary notebooks or scratch files
+*.ipynb_checkpoints/
+scratch/
+tmp/
+temp/
