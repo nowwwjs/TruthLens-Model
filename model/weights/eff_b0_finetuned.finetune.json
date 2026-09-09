@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "architecture": "efficientnet_b0",
+  "base_checkpoint": "dfdc_efficientnet_b0_focal.pth",
+  "checkpoint": "eff_b0_finetuned.pth",
+  "finetuning_dataset": "DeepFake-Eval-2024",
+  "selection_metric": "validation_roc_auc",
+  "best_validation_roc_auc": 0.6731208545090985,
+  "validation_accuracy_at_best_auc": 0.6271950271950272,
+  "history": [
+    {"epoch": 1, "train_loss": 0.6734, "train_accuracy": 0.6003, "validation_loss": 0.669, "validation_accuracy": 0.6016, "validation_roc_auc": 0.6452, "learning_rate": 0.00009, "elapsed_seconds": 74.3},
+    {"epoch": 2, "train_loss": 0.5247, "train_accuracy": 0.7963, "validation_loss": 0.6774, "validation_accuracy": 0.6266, "validation_roc_auc": 0.6688, "learning_rate": 0.000065, "elapsed_seconds": 25.7},
+    {"epoch": 3, "train_loss": 0.4412, "train_accuracy": 0.8522, "validation_loss": 0.7022, "validation_accuracy": 0.6272, "validation_roc_auc": 0.6731, "learning_rate": 0.000035, "elapsed_seconds": 25.7},
+    {"epoch": 4, "train_loss": 0.3941, "train_accuracy": 0.8839, "validation_loss": 0.7084, "validation_accuracy": 0.6258, "validation_roc_auc": 0.672, "learning_rate": 0.00001, "elapsed_seconds": 26.1},
+    {"epoch": 5, "train_loss": 0.3758, "train_accuracy": 0.8953, "validation_loss": 0.7091, "validation_accuracy": 0.6331, "validation_roc_auc": 0.6726, "learning_rate": 0.0, "elapsed_seconds": 24.7}
+  ],
+  "training_arguments": {
+    "epochs": 5,
+    "batch_size": 32,
+    "learning_rate": 0.0001,
+    "weight_decay": 0.0001,
+    "label_smoothing": 0.1,
+    "frames_per_video": 8,
+    "max_train_videos": 200
+  },
+  "limitations": [
+    "The saved record does not include an independent external test score.",
+    "The record does not prove joint training on Celeb-DF and DFDC.",
+    "Absolute local paths were removed for public release."
+  ]
+}

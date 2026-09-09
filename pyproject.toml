@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "truthlens-model"
+version = "1.0.0"
+description = "Evidence-based deepfake ensemble portfolio project"
+requires-python = ">=3.10"
+dependencies = [
+  "torch",
+  "torchvision",
+  "facenet-pytorch",
+  "opencv-python",
+  "pillow",
+  "numpy",
+  "scikit-learn",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[tool.setuptools.packages.find]
+include = ["truthlens*", "model*", "src*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"

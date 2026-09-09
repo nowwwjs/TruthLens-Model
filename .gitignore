@@ -1,0 +1,13 @@
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.venv/
+*.py[cod]
+dataset/
+data/
+results/
+tmp/
+weights/*.pth
+model/weights/*.pth
+*.ckpt
+*.pt

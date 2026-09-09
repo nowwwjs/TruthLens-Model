@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "generated_for": "TruthLens portfolio refactor",
+  "artifacts": [
+    {
+      "file": "code/weights/dfdc_efficientnet_b0_focal.pth",
+      "architecture": "efficientnet_b0",
+      "sha256": "d767f98062a467f3fa9ce31e0958de18e6e67ba1324f7a1ddc304102b7d406bc",
+      "training_source": "DFDC, inferred from repository filename and training code",
+      "verified_metric": null
+    },
+    {
+      "file": "code/weights/dfdc_mobilenet_v3_focal.pth",
+      "architecture": "mobilenet_v3_large",
+      "sha256": "c6f28c6b310a5ca67d1c128502cbae4528425a6944a6ff8f337b77e3b458c661",
+      "training_source": "DFDC, inferred from repository filename and training code",
+      "verified_metric": null
+    },
+    {
+      "file": "code/model/weights/eff_b0_finetuned.pth",
+      "architecture": "efficientnet_b0",
+      "sha256": "89375c12334f4636244fee7b13dc6a5a717f555ed090357a556e9ee502224d62",
+      "training_source": "DFDC EfficientNet checkpoint fine-tuned on DeepFake-Eval-2024",
+      "verified_metric": {
+        "name": "validation_roc_auc",
+        "value": 0.6731208545090985,
+        "selection_epoch": 3
+      }
+    }
+  ]
+}

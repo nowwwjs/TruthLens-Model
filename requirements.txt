@@ -1,0 +1,14 @@
+# Core deep-learning runtime. Select the appropriate CPU/CUDA torch wheel for
+# your environment before installing this file.
+torch
+torchvision
+facenet-pytorch
+
+# Image and data processing
+opencv-python
+pillow
+numpy
+scikit-learn
+
+# Progress display used by optional experiment scripts
+tqdm
