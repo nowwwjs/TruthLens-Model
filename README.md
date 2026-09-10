@@ -1,46 +1,55 @@
 # TruthLens
-## 제한된 환경의 딥페이크 탐지에서 일반화 문제를 다룬 모델링 사례
+## CNN으로 딥페이크를 구분해 보려다, 데이터와 평가 설계의 문제를 만난 모델링 기록
 
-> 졸업작품의 AI 모델 파트입니다. 높은 점수 하나를 내세우기보다, 영상 프레임 데이터에서 생기기 쉬운 누수와 과적합을 찾아 평가 구조와 코드 구조를 개선했습니다.
+> **처음 목표는 단순했습니다.** 얼굴 이미지에서 REAL과 FAKE를 구분하는 CNN 모델을 직접 만들어 보자는 것이었습니다. 개발을 진행하면서 작은 표본, 프레임 중복, 도메인 차이 때문에 점수 하나만으로 모델을 설명할 수 없다는 사실을 확인했습니다. 이 저장소는 그 과정과 다음 실험을 남긴 AI 모델 파트 기록입니다.
 
 ## 한눈에 보기
 
 | 구분 | 내용 |
 | --- | --- |
-| 문제 | 얼굴 기반 딥페이크 분류에서 데이터셋 밖 일반화가 쉽게 무너지는 문제 |
-| 담당 범위 | 데이터 인덱싱, 모델 학습·평가, 앙상블 추론, 백엔드 연결용 Python 인터페이스 |
-| 모델 | EfficientNet-B0, MobileNetV3-Large, weighted soft voting |
-| 핵심 설계 | 원본 영상 그룹 단위 분할, 전이학습, regularization, validation 전용 threshold 선택 |
-| 프로젝트 상태 | 교육·연구용 프로토타입 |
-| 검증 기록 | DeepFake-Eval-2024 EfficientNet-B0 fine-tuning, validation ROC-AUC 0.6731 |
+| 처음 목표 | CNN 기반 얼굴 이미지 분류기로 딥페이크 판별 흐름 구현 |
+| 개발 중 발견 | 프레임 무작위 분할과 작은 데이터가 과적합·누수처럼 보이는 문제를 만들 수 있음 |
+| 직접 맡은 범위 | 데이터 인덱싱, 학습·평가, 앙상블 추론, 백엔드 연결용 Python 인터페이스 |
+| 구현 모델 | EfficientNet-B0, MobileNetV3-Large, weighted soft voting |
+| 현재 상태 | 교육·연구용 프로토타입 |
+| 보존된 기록 | DeepFake-Eval-2024 EfficientNet-B0 fine-tuning, validation ROC-AUC **0.6731**, accuracy **0.6272** |
 
 ---
 
-## 1. 왜 이 문제를 다시 정의했는가
+## 1. 출발점: CNN으로 딥페이크를 구분해 보자
 
-딥페이크 탐지는 같은 데이터셋 안에서 높은 정확도가 나와도, 다른 압축 방식·카메라·인물·생성 기법을 만나면 성능이 크게 달라질 수 있습니다. 특히 한 원본 영상에서 추출한 프레임을 무작위로 나누면, 거의 같은 장면이 학습과 평가에 함께 들어갈 수 있습니다. 이 경우 모델은 새로운 영상에 대한 판별 능력보다 프레임의 반복 패턴을 학습할 위험이 있습니다.
+TruthLens의 AI 모델 파트는 “얼굴 이미지 한 장을 입력하면 CNN이 REAL과 FAKE를 구분할 수 있을까?”라는 질문에서 시작했습니다. EfficientNet-B0와 MobileNetV3-Large를 구성하고, 얼굴 crop부터 모델 점수 반환까지 하나의 추론 흐름을 구현했습니다.
 
-그래서 이 프로젝트의 질문을 다음처럼 정리했습니다.
+처음에는 모델 구조와 학습 옵션을 조정하는 데 집중했습니다. 하지만 실험을 반복하면서, **모델을 더 복잡하게 만드는 일보다 데이터가 어떻게 나뉘고 결과가 어떻게 기록되는지가 더 먼저**라는 문제를 만났습니다.
 
-> 제한된 데이터와 연산 자원에서, 모델 성능을 부풀리지 않으면서 과적합을 줄이고 다음 실험으로 이어질 수 있는 평가 흐름을 만들 수 있는가?
-
-단순히 CNN을 추가하는 것보다 **데이터 분할, 학습 절차, threshold 선택, 결과 기록**을 함께 설계하는 데 집중했습니다.
+| 개발 단계 | 처음 생각 | 구현하면서 확인한 문제 | 이후 대응 |
+| --- | --- | --- | --- |
+| 데이터 준비 | 프레임 수를 늘리면 학습 데이터가 늘어난다 | 같은 영상의 유사 프레임은 독립 표본이 아니다 | 원본 영상 그룹 단위 split |
+| 학습 | epoch를 더 돌리면 성능이 오를 수 있다 | train 점수만 오르고 validation은 정체할 수 있다 | 전이학습, regularization, early stopping |
+| 평가 | accuracy 하나로 비교한다 | threshold·분할·도메인에 따라 해석이 달라진다 | validation 전용 threshold, test 고정 |
+| 앙상블 | 모델을 합치면 더 좋아질 수 있다 | 가중치와 일반화 우수성을 자동으로 증명하지 않는다 | 구현 설정과 검증된 결과를 분리 |
 
 ---
 
-## 2. 내가 맡은 범위
+## 2. 왜 결과가 높지 않았는가
 
-팀 프로젝트는 프론트엔드·백엔드·AI 모델로 나뉘었고, 이 저장소는 AI 모델 파트만 다룹니다.
+보존된 실행에서 validation accuracy는 **0.6272**, ROC-AUC는 **0.6731**입니다. 취업 포트폴리오에서 “높은 탐지 성능”이라고 제시할 수 있는 수치가 아닙니다. 이 프로젝트에서 중요한 것은 낮은 결과를 감추지 않고, 그 원인을 분석하고 다음 실험으로 연결한 점입니다.
 
-- 얼굴 이미지 데이터 인덱싱과 split manifest 생성
-- EfficientNet-B0·MobileNetV3-Large 분류기 구성
-- ImageNet 전이학습과 단계적 fine-tuning
-- augmentation, Dropout, Focal Loss, weight decay, scheduler 적용
-- weighted soft voting 기반 추론
-- MTCNN 얼굴 크롭 및 백엔드 연결용 `DeepfakeDetectionPipeline`
-- 평가·체크포인트·메타데이터 검증 코드
+### 제한된 독립 표본
 
-웹 UI, API 서버, 클라우드 배포는 팀의 다른 역할이며 이 저장소의 개인 기여로 포함하지 않습니다.
+기록상 학습에는 최대 200개 train 영상에서 영상당 8프레임을 사용했습니다. 즉 최대 약 1,600장의 train 프레임 수준이며, 같은 원본 영상 안의 프레임은 서로 매우 비슷합니다. 프레임 숫자가 몇 천 장처럼 보여도 수천 장의 독립적인 얼굴 사례와는 다릅니다.
+
+### 데이터셋·도메인 차이
+
+Celeb-DF, DFDC, DeepFake-Eval-2024는 촬영 환경, 압축률, 인물 구성, 위조 방식이 다릅니다. 한 데이터셋에서 본 압축 노이즈나 배경 패턴을 학습하면 다른 출처에서 성능이 흔들릴 수 있습니다.
+
+### 작은 데이터에서의 과적합
+
+보존된 기록에서는 train accuracy가 0.6003에서 0.8953까지 상승했지만 validation ROC-AUC는 epoch 3의 0.6731 이후 0.6720, 0.6726 수준에 머물렀고 validation loss는 증가했습니다. 더 오래 학습하는 것만으로 일반화가 개선되지 않았다는 신호입니다.
+
+### 연산·저장 환경의 제약
+
+대규모 원본 영상을 반복 학습하고, 여러 seed와 데이터셋 조합을 충분히 반복할 GPU 시간·저장 공간이 없었습니다. 그 환경에서 수치만 올리기보다, 제한을 코드와 문서에 남기는 쪽을 선택했습니다.
 
 ---
 
@@ -58,7 +67,7 @@ manifest는 이미지 파일만 나열하지 않고 데이터셋과 원본 영�
 | `group_id` | 같은 원본 영상의 식별자 |
 | `split` | train / validation / test |
 
-`source_dataset + group_id`를 하나의 분할 단위로 관리합니다. 같은 그룹이 두 split에 들어가면 테스트가 실패하도록 구성했습니다. 손상 이미지를 검은 이미지로 대체하지 않고 제외하는 이유도, 인공적인 검은 패턴이 label과 결합해 새로운 편향이 되는 것을 막기 위해서입니다.
+`source_dataset + group_id`를 하나의 분할 단위로 관리합니다. 같은 그룹이 두 split에 들어가면 테스트가 실패하도록 구성했습니다. 손상 이미지를 검은 이미지로 대체하지 않고 제외하는 이유도, 인공적인 검은 패턴이 label과 결합하는 일을 막기 위해서입니다.
 
 ```mermaid
 flowchart LR
@@ -71,13 +80,13 @@ flowchart LR
 
 ### threshold는 validation에서만 선택
 
-기본 판정 threshold는 0.5입니다. 별도 보정이 필요하면 validation set에서 후보 값을 비교해 하나를 고정하고, test set에는 그 값을 한 번만 적용합니다. test 결과를 본 뒤 threshold를 바꾸는 흐름은 제공하지 않습니다.
+기본 판정 threshold는 0.5입니다. 별도 보정이 필요하면 validation set에서 후보 값을 비교해 하나를 고정하고, test set에는 그 값을 한 번만 적용합니다. test 결과를 본 뒤 threshold를 다시 바꾸는 흐름은 제공하지 않습니다.
 
 ---
 
-## 4. 모델링에서 시도한 것
+## 4. 구현한 모델과 학습 시도
 
-### 서로 다른 두 백본의 앙상블
+### 두 CNN 백본과 soft voting
 
 EfficientNet-B0를 주 모델로, MobileNetV3-Large를 보조 모델로 구성했습니다. 두 모델의 fake 확률을 0.8 : 0.2로 가중 평균합니다.
 
@@ -92,35 +101,27 @@ flowchart TB
     V --> O[REAL / FAKE, 확률, 모델별 점수]
 ```
 
-이 가중치는 구현된 실험 설정입니다. 0.8 : 0.2가 최적이라는 비교 기록은 남아 있지 않으므로, 앙상블의 우수성으로 해석하지 않습니다.
+0.8 : 0.2는 구현한 실험 설정입니다. 이 가중치가 최적이라는 비교 기록은 없고, 앙상블이 단독 EfficientNet보다 좋았다고 말할 근거도 없습니다.
 
-### 전이학습과 단계적 fine-tuning
-
-작은 데이터에서 전체 네트워크를 처음부터 학습하면 빠르게 암기할 수 있습니다. 새 학습은 다음 순서로 구성했습니다.
-
-1. ImageNet 가중치로 시작하고 classifier head만 warm-up
-2. 마지막 feature block과 head를 낮은 learning rate로 fine-tuning
-3. 충분한 데이터와 검증 근거가 있을 때만 전체 backbone 학습
-
-평가와 추론 경로는 checkpoint를 불러올 때 구조만 생성해, 네트워크가 없는 환경에서 ImageNet 가중치를 임의로 내려받지 않도록 했습니다.
-
-### 과적합 완화 장치
+### 작은 데이터에 대응하려고 적용한 장치
 
 | 시도 | 코드상 목적 |
 | --- | --- |
+| ImageNet 전이학습 | 처음부터 전체 CNN을 학습할 때의 표본 부족 완화 |
+| head warm-up 후 partial unfreeze | pretrained feature를 유지하면서 일부만 fine-tuning |
 | Dropout 0.5 | classifier head의 과도한 의존 완화 |
 | AdamW weight decay | 파라미터 크기 규제 |
 | augmentation | 좌우 반전, 색 변화, 회전, random erasing으로 입력 변화 제공 |
 | Focal Loss | 어려운 샘플의 학습 비중 조정 |
-| CosineAnnealingLR·early stopping | 불필요한 장기 학습 방지 |
+| Cosine scheduler·early stopping | 불필요한 장기 학습 방지 |
 
-각 항목의 단독 효과를 비교한 ablation 실험은 아직 없습니다. 따라서 이 표는 구현한 방어 장치이지, 각각의 성능 향상 증명은 아닙니다.
+각 항목의 단독 효과를 비교한 ablation 실험은 없습니다. 따라서 이 표는 구현한 방어 장치이며 각각의 성능 향상 증명은 아닙니다.
 
 ---
 
 ## 5. 보존된 실험 기록
 
-현재 체크포인트와 연결할 수 있는 기록은 **DeepFake-Eval-2024에서 수행한 EfficientNet-B0 fine-tuning 1건**입니다.
+현재 checkpoint와 연결할 수 있는 기록은 **DeepFake-Eval-2024에서 수행한 EfficientNet-B0 fine-tuning 1건**입니다.
 
 | 항목 | 기록 |
 | --- | --- |
@@ -131,24 +132,22 @@ flowchart TB
 | 최고 validation ROC-AUC | **0.6731, epoch 3** |
 | 해당 epoch accuracy | **0.6272** |
 
-학습 accuracy는 0.6003에서 0.8953까지 상승했지만, validation ROC-AUC는 epoch 3 이후 0.6720과 0.6726 수준에서 정체됐고 validation loss도 증가했습니다. 더 오래 학습하는 것만으로 일반화가 개선되지 않는다는 신호로 해석했습니다.
+### 이 기록으로 확인한 것
 
-### 이 기록으로 말할 수 있는 것
-
-- 제한된 표본에서 전이학습과 checkpoint 선택 흐름을 구현했다.
+- CNN 분류기, 얼굴 crop, 전이학습, checkpoint 선택, 점수 반환까지의 흐름을 구현했다.
 - train과 validation의 차이를 수치로 확인했다.
-- 추가 epoch보다 데이터 독립성, 다양성, 외부 평가가 중요하다는 다음 과제를 확인했다.
+- 추가 epoch보다 데이터의 독립성·다양성·평가 설계가 더 중요하다는 다음 과제를 확인했다.
 
-### 이 기록으로 말할 수 없는 것
+### 이 기록만으로 말할 수 없는 것
 
-- 앙상블이 단독 EfficientNet보다 우수하다.
+- 앙상블이 단독 모델보다 우수하다.
 - 실제 웹 이미지 전반에 안정적으로 일반화한다.
 - 출력 확률이 calibration된 신뢰도다.
 - Celeb-DF와 DFDC를 함께 학습한 checkpoint의 성능이다.
 
 ---
 
-## 6. 저장소 구조와 재현성
+## 6. 코드 구조와 재현성
 
 ```text
 truthlens/
@@ -165,7 +164,7 @@ tests/            데이터 누수·threshold·vote·smoke test
 artifacts/        가중치 파일의 메타데이터와 SHA-256 manifest
 ```
 
-재현성을 위해 다음을 코드로 검증합니다.
+코드는 다음을 검증합니다.
 
 - 원본 영상 그룹이 split 사이에 섞이지 않는지
 - random seed와 manifest 생성이 재현되는지
@@ -179,9 +178,38 @@ artifacts/        가중치 파일의 메타데이터와 SHA-256 manifest
 
 ---
 
-## 7. 실행 방법
+## 7. 다음 실험: 분류와 segmentation을 구분해서 진행
 
-### 환경 준비
+Transformer 자체가 segmentation 모델을 뜻하지는 않습니다. **Vision Transformer(ViT)는 이미지 patch를 입력으로 받아 분류에도 사용할 수 있는 구조**입니다. 반면 SegFormer처럼 Transformer encoder와 decoder를 결합한 모델은 semantic segmentation을 수행할 수 있습니다.
+
+따라서 다음 계획을 두 갈래로 나눕니다.
+
+### A. 충분한 데이터와 pretrained weight가 있을 때: ViT 분류 비교
+
+- CNN과 ViT를 같은 원본 영상 group split에서 비교
+- 데이터셋별·seed별 평균과 분산 기록
+- 단일 CNN, 앙상블, ViT fine-tuning을 같은 test protocol로 평가
+- ViT를 작은 데이터에서 처음부터 학습하지 않고 pretrained model fine-tuning으로만 시작
+
+### B. 조작 영역을 설명하려는 경우: localization / segmentation
+
+- 이미지 전체 REAL·FAKE label만으로는 픽셀 단위 segmentation을 학습·평가할 수 없음
+- 조작 영역 mask가 있는 데이터 또는 신뢰 가능한 mask 생성 절차를 먼저 확보
+- mask가 확보된 뒤 SegFormer 계열 같은 segmentation 모델을 후보로 비교
+- pixel-level IoU, boundary 품질, 실제 탐지 성능을 별도로 평가
+
+### 공통 선행 과제
+
+1. 원본 영상·인물 단위 holdout과 split 중복 검사 자동화
+2. Celeb-DF 학습 후 DFDC 평가처럼 교차 도메인 성능 분리
+3. 압축률·해상도·얼굴 크기별 slice metric과 오류 사례 기록
+4. checkpoint hash, seed, data manifest, 실패한 실험 로그 보존
+
+참고: [Vision Transformer](https://arxiv.org/abs/2010.11929), [SegFormer](https://arxiv.org/abs/2105.15203)
+
+---
+
+## 8. 실행 방법
 
 ```bash
 python -m pip install -r requirements.txt
@@ -189,9 +217,7 @@ python -m pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
-### 데이터 인덱스 생성 예시
-
-원본 데이터의 접근 조건과 라이선스를 먼저 확인한 뒤, 데이터 위치에 맞춰 manifest를 만듭니다.
+원본 데이터의 접근 조건과 라이선스를 확인한 뒤 다음 CLI를 사용합니다.
 
 ```bash
 python src/build_index.py --help
@@ -199,21 +225,4 @@ python src/train_ensemble.py --help
 python src/evaluate_ensemble.py --help
 ```
 
-체크포인트와 데이터셋 파일은 별도로 준비해야 합니다. 파일명만으로 추정한 학습 출처와 검증된 성능 기록은 구분합니다.
-
----
-
-## 8. 다음 실험
-
-1. 원본 영상·인물 단위 holdout을 강화하고 split별 중복 검사를 자동화
-2. Celeb-DF 학습 후 DFDC 평가처럼 교차 도메인 성능을 별도 측정
-3. 단독 모델과 앙상블을 여러 seed로 반복해 평균과 분산 기록
-4. validation에서 앙상블 가중치를 비교하고 고정된 test에는 한 번만 적용
-5. 압축률·해상도·얼굴 크기별 slice metric과 오류 사례 정리
-6. 자원이 확보되면 ViT, 주파수 기반 특징, graph 기반 접근을 같은 프로토콜에서 비교
-
----
-
-## 9. 사용상 주의
-
-이 모델은 교육·연구용 프로토타입입니다. 결과를 포렌식 증거나 자동 제재 판단에 사용하면 안 됩니다. 데이터셋과 파생 가중치의 재배포·상업 이용 조건은 각각 별도로 확인해야 합니다.
+이 모델은 교육·연구용 프로토타입입니다. 출력은 포렌식 증거나 자동 제재 판단에 사용하면 안 됩니다.
